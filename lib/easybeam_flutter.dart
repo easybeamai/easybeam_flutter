@@ -85,15 +85,42 @@ class PortalResponse {
   }
 }
 
+typedef StreamGetter = Future<Stream<String>> Function(http.Request request);
+typedef CancelFunction = void Function();
+
 class Easybeam {
   final EasyBeamConfig config;
   final String baseUrl = 'https://api.easybeam.ai/v1';
-  StreamSubscription? _streamSubscription;
-  http.Client? _client;
+  final Map<String, StreamSubscription> _streamSubscriptions = {};
+  final Map<String, http.Client> _clients = {};
+  http.Client _client = http.Client();
+
+  StreamGetter? _streamGetterOverride;
 
   Easybeam(this.config);
 
-  void streamEndpoint({
+  void injectStreamGetter(StreamGetter streamGetter) {
+    _streamGetterOverride = streamGetter;
+  }
+
+  void injectHttpClient(http.Client client) {
+    _client = client;
+  }
+
+  void dispose() {
+    for (var streamId in _streamSubscriptions.keys) {
+      _cleanupStream(streamId);
+    }
+  }
+
+  Future<Stream<String>> _getStream(http.Request request) async {
+    if (_streamGetterOverride != null) {
+      return _streamGetterOverride!(request);
+    }
+    return (await getStream(request)).transform(utf8.decoder);
+  }
+
+  CancelFunction streamEndpoint({
     required String endpoint,
     required String id,
     String? userId,
@@ -102,7 +129,9 @@ class Easybeam {
     required Function(PortalResponse) onNewResponse,
     required Function() onClose,
     required Function(dynamic) onError,
-  }) async {
+  }) {
+    final streamId =
+        '${endpoint}_${id}_${DateTime.now().millisecondsSinceEpoch}';
     final url = Uri.parse('$baseUrl/$endpoint/$id');
     final body = jsonEncode({
       'variables': filledVariables,
@@ -111,35 +140,40 @@ class Easybeam {
       'userId': userId,
     });
 
-    _client = http.Client();
     final request = http.Request('POST', url);
     request.headers['Content-Type'] = 'application/json';
     request.headers['Authorization'] = 'Bearer ${config.token}';
     request.body = body;
 
-    getStream(request).asStream().listen(
-      (response) {
-        response.transform(utf8.decoder).listen(
-          (String chunk) {
-            // Handle partial messages
-            _processChunk(chunk, onNewResponse, onClose, onError);
-          },
-          onError: (error) {
-            onError('Error in stream: $error');
-            cancelCurrentStream();
-          },
-          onDone: () {
-            onClose();
-            cancelCurrentStream();
-          },
-          cancelOnError: true,
-        );
-      },
-      onError: (error) {
-        onError('Error starting stream: $error');
-        cancelCurrentStream();
-      },
-    );
+    _clients[streamId] = http.Client();
+
+    _getStream(request).then((stream) {
+      _streamSubscriptions[streamId] = stream.listen(
+        (String chunk) {
+          _processChunk(chunk, onNewResponse, onClose, onError);
+        },
+        onError: (error) {
+          onError('Error in stream: $error');
+          _cleanupStream(streamId);
+        },
+        onDone: () {
+          onClose();
+          _cleanupStream(streamId);
+        },
+      );
+    }).catchError((error) {
+      onError('Error starting stream: $error');
+      _cleanupStream(streamId);
+    });
+
+    return () => _cleanupStream(streamId);
+  }
+
+  void _cleanupStream(String streamId) {
+    _streamSubscriptions[streamId]?.cancel();
+    _streamSubscriptions.remove(streamId);
+    _clients[streamId]?.close();
+    _clients.remove(streamId);
   }
 
 // Buffer to store incomplete messages
@@ -164,9 +198,7 @@ class Easybeam {
       if (rawMessage.startsWith('data: ')) {
         final data = rawMessage.substring(6);
         if (data.trim() == '[DONE]') {
-          // Stream finished
-          cancelCurrentStream();
-          onClose();
+          // close called at top level
         } else {
           try {
             final jsonResponse = jsonDecode(data);
@@ -178,13 +210,6 @@ class Easybeam {
         }
       }
     }
-  }
-
-  void cancelCurrentStream() {
-    _streamSubscription?.cancel();
-    _streamSubscription = null;
-    _client?.close();
-    _client = null;
   }
 
   Future<PortalResponse> getEndpoint({
@@ -202,7 +227,7 @@ class Easybeam {
       'userId': userId,
     });
 
-    final response = await http.post(
+    final response = await _client.post(
       url,
       headers: {
         'Content-Type': 'application/json',
@@ -218,7 +243,7 @@ class Easybeam {
     return PortalResponse.fromJson(jsonDecode(response.body));
   }
 
-  void streamPortal({
+  CancelFunction streamPortal({
     required String portalId,
     String? userId,
     required Map<String, String> filledVariables,
@@ -227,7 +252,7 @@ class Easybeam {
     required Function() onClose,
     required Function(dynamic) onError,
   }) {
-    streamEndpoint(
+    return streamEndpoint(
       endpoint: 'portal',
       id: portalId,
       userId: userId,
@@ -254,7 +279,7 @@ class Easybeam {
     );
   }
 
-  Future<void> streamWorkflow({
+  CancelFunction streamWorkflow({
     required String workflowId,
     String? userId,
     required Map<String, String> filledVariables,
@@ -262,8 +287,8 @@ class Easybeam {
     required Function(PortalResponse) onNewResponse,
     required Function() onClose,
     required Function(dynamic) onError,
-  }) async {
-    streamEndpoint(
+  }) {
+    return streamEndpoint(
       endpoint: 'workflow',
       id: workflowId,
       userId: userId,
@@ -304,7 +329,7 @@ class Easybeam {
       'reviewText': reviewText,
     });
 
-    final response = await http.post(
+    final response = await _client.post(
       url,
       headers: {
         'Content-Type': 'application/json',

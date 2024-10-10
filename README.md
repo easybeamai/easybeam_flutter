@@ -1,57 +1,152 @@
 # Easybeam Flutter SDK
 
-A Flutter SDK for integrating with the Easybeam AI platform.
+[![Build and Test](https://github.com/easybeamai/easybeam_flutter/actions/workflows/ci.yml/badge.svg)](https://github.com/easybeamai/easybeam_flutter/actions)
+
+Easybeam Flutter SDK is a powerful and flexible library for integrating Easybeam AI functionality into your Flutter applications. This SDK provides seamless access to Easybeam's AI-powered chat and workflow capabilities, supporting both streaming and non-streaming interactions.
 
 ## Features
 
-- Stream responses from Easybeam portals and workflows
-- Make non-streaming requests to portals and workflows
-- Handle user reviews for chat interactions
+- **Portal and Workflow Integration**: Easily interact with Easybeam portals and workflows.
+- **Streaming Support**: Real-time streaming of AI responses for interactive experiences.
+- **Non-Streaming Requests**: Traditional request-response pattern for simpler interactions.
+- **Flexible Configuration**: Customize the SDK behavior to fit your application needs.
+- **Error Handling**: Robust error handling for reliable integration.
+- **Review Submission**: Built-in functionality to submit user reviews.
 
-## Getting started
+## Installation
 
-To use this package, add `easybeam_flutter` as a dependency in your `pubspec.yaml` file.
+Add this to your package's `pubspec.yaml` file:
 
 ```yaml
 dependencies:
-  easybeam_flutter: ^0.0.1
+  easybeam_flutter: ^1.0.0
+```
+
+Then run:
+
+```
+flutter pub get
 ```
 
 ## Usage
 
-Here's a simple example of how to use the Easybeam Flutter SDK:
+### Initialization
+
+First, import the package and create an instance of Easybeam:
 
 ```dart
 import 'package:easybeam_flutter/easybeam_flutter.dart';
 
-void main() async {
-  final easybeam = Easybeam(EasyBeamConfig(token: 'your-api-token'));
+final easybeam = Easybeam(EasyBeamConfig(token: 'your_api_token_here'));
+```
 
-  final portalResponse = await easybeam.getPortal(
-    portalId: 'your-portal-id',
-    userId: 'user-123',
+### Streaming Interaction
+
+To start a streaming interaction with a portal:
+
+```dart
+final cancelFunction = easybeam.streamPortal(
+  portalId: 'your_portal_id',
+  filledVariables: {'key': 'value'},
+  messages: [
+    ChatMessage(
+      content: 'Hello, AI!',
+      role: ChatRole.USER,
+      createdAt: ChatMessage.getCurrentTimestamp(),
+      id: '1',
+    ),
+  ],
+  onNewResponse: (response) {
+    print('New message: ${response.newMessage.content}');
+  },
+  onClose: () {
+    print('Stream closed');
+  },
+  onError: (error) {
+    print('Error: $error');
+  },
+);
+
+// To cancel the stream later:
+cancelFunction();
+```
+
+### Non-Streaming Interaction
+
+For a simple request-response interaction:
+
+```dart
+try {
+  final response = await easybeam.getPortal(
+    portalId: 'your_portal_id',
     filledVariables: {'key': 'value'},
     messages: [
       ChatMessage(
-        content: 'Hello',
+        content: 'Hello, AI!',
         role: ChatRole.USER,
-        createdAt: DateTime.now().toIso8601String(),
+        createdAt: ChatMessage.getCurrentTimestamp(),
         id: '1',
       ),
     ],
   );
-
-  print('Portal response: ${portalResponse.newMessage.content}');
+  print('AI response: ${response.newMessage.content}');
+} catch (e) {
+  print('Error: $e');
 }
 ```
 
-For more detailed usage instructions, please refer to the API documentation.
+### Submitting a Review
 
-## Additional information
+To submit a review for a chat interaction:
 
-For more information about Easybeam and its capabilities, visit [https://easybeam.ai](https://easybeam.ai).
+```dart
+await easybeam.review(
+  chatId: 'your_chat_id',
+  userId: 'user123',
+  reviewScore: 5,
+  reviewText: 'Great experience!',
+);
+```
+
+## Advanced Usage
+
+### Custom HTTP Client
+
+You can inject a custom HTTP client for more control over network requests:
+
+```dart
+import 'package:http/http.dart' as http;
+
+final customClient = http.Client();
+easybeam.injectHttpClient(customClient);
+```
+
+### Cleanup
+
+When you're done with the Easybeam instance, make sure to dispose of it to clean up resources:
+
+```dart
+easybeam.dispose();
+```
+
+## Error Handling
+
+The SDK provides detailed error messages. Always wrap API calls in try-catch blocks for proper error handling.
+
+## Notes
+
+- Ensure you have a valid Easybeam API token before using the SDK.
+- The SDK uses Server-Sent Events (SSE) for streaming, which may have implications for backend compatibility and network configurations.
+- For production applications, consider implementing proper token management and security practices.
+
+## Contributing
+
+Contributions to the Easybeam Flutter SDK are welcome! Please refer to the contributing guidelines for more information.
 
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-# easybeam_flutter
+
+## Support
+
+For support, please contact support@easybeam.ai or visit our [documentation](https://docs.easybeam.ai).
