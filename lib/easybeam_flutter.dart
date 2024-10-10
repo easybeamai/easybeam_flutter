@@ -89,9 +89,13 @@ class Easybeam {
   final EasyBeamConfig config;
   final String baseUrl = 'https://api.easybeam.ai/v1';
   StreamSubscription? _streamSubscription;
-  http.Client? _client;
+  http.Client _client = http.Client();
 
   Easybeam(this.config);
+
+  void injectHttpClient(http.Client client) {
+    _client = client;
+  }
 
   void streamEndpoint({
     required String endpoint,
@@ -111,7 +115,6 @@ class Easybeam {
       'userId': userId,
     });
 
-    _client = http.Client();
     final request = http.Request('POST', url);
     request.headers['Content-Type'] = 'application/json';
     request.headers['Authorization'] = 'Bearer ${config.token}';
@@ -183,8 +186,6 @@ class Easybeam {
   void cancelCurrentStream() {
     _streamSubscription?.cancel();
     _streamSubscription = null;
-    _client?.close();
-    _client = null;
   }
 
   Future<PortalResponse> getEndpoint({
@@ -202,7 +203,7 @@ class Easybeam {
       'userId': userId,
     });
 
-    final response = await http.post(
+    final response = await _client.post(
       url,
       headers: {
         'Content-Type': 'application/json',
@@ -304,7 +305,7 @@ class Easybeam {
       'reviewText': reviewText,
     });
 
-    final response = await http.post(
+    final response = await _client.post(
       url,
       headers: {
         'Content-Type': 'application/json',
