@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:mockito/mockito.dart';
 import 'package:mockito/annotations.dart';
 import 'package:easybeam_flutter/easybeam_flutter.dart';
-
+import 'dart:async';
 import 'easybeam_flutter_test.mocks.dart';
 
 @GenerateMocks([http.Client])
@@ -192,7 +192,7 @@ void main() {
       );
 
       // Wait for stream to complete
-      await Future.delayed(Duration(milliseconds: 100));
+      await Future.delayed(const Duration(milliseconds: 100));
 
       expect(responses.length, 2);
       expect(responses[0].newMessage.content, 'Part 1');
@@ -222,6 +222,88 @@ void main() {
 
       expect(errorCallCount, 1);
       expect(closeCallCount, 0); // onClose is not called when there's an error
+    });
+  });
+
+  group("stream", () {
+    test('streamPortal returns a cancel function', () async {
+      easybeam.injectStreamGetter((request) async => Stream.fromIterable([
+            'data: {"newMessage": {"content": "Part 1", "role": "AI", "createdAt": "2023-05-20T12:00:00Z", "id": "1"}, "chatId": "test_chat_id"}\n\n',
+            'data: {"newMessage": {"content": "Part 2", "role": "AI", "createdAt": "2023-05-20T12:00:01Z", "id": "2"}, "chatId": "test_chat_id"}\n\n',
+            'data: [DONE]\n\n',
+          ]));
+
+      final cancelFunction = easybeam.streamPortal(
+        portalId: 'test_portal',
+        filledVariables: {'key': 'value'},
+        messages: [],
+        onNewResponse: (response) {},
+        onClose: () {},
+        onError: (error) {},
+      );
+
+      expect(cancelFunction, isA<Function>());
+    });
+
+    test('multiple streams can be managed independently', () async {
+      final streamController1 = StreamController<String>();
+      final streamController2 = StreamController<String>();
+
+      var streamGetterCallCount = 0;
+      easybeam.injectStreamGetter((request) async {
+        streamGetterCallCount++;
+        return streamGetterCallCount == 1
+            ? streamController1.stream
+            : streamController2.stream;
+      });
+
+      final responses1 = <PortalResponse>[];
+      final responses2 = <PortalResponse>[];
+
+      final cancelFunction1 = easybeam.streamPortal(
+        portalId: 'test_portal_1',
+        filledVariables: {'key': 'value1'},
+        messages: [],
+        onNewResponse: (response) => responses1.add(response),
+        onClose: () {},
+        onError: (error) {},
+      );
+
+      final cancelFunction2 = easybeam.streamPortal(
+        portalId: 'test_portal_2',
+        filledVariables: {'key': 'value2'},
+        messages: [],
+        onNewResponse: (response) => responses2.add(response),
+        onClose: () {},
+        onError: (error) {},
+      );
+
+      streamController1.add(
+          'data: {"newMessage": {"content": "Stream 1", "role": "AI", "createdAt": "2023-05-20T12:00:00Z", "id": "1"}, "chatId": "test_chat_id_1"}\n\n');
+      streamController2.add(
+          'data: {"newMessage": {"content": "Stream 2", "role": "AI", "createdAt": "2023-05-20T12:00:01Z", "id": "2"}, "chatId": "test_chat_id_2"}\n\n');
+
+      await Future.delayed(Duration(milliseconds: 10));
+
+      cancelFunction1();
+
+      streamController1.add(
+          'data: {"newMessage": {"content": "Stream 1 - Part 2", "role": "AI", "createdAt": "2023-05-20T12:00:02Z", "id": "3"}, "chatId": "test_chat_id_1"}\n\n');
+      streamController2.add(
+          'data: {"newMessage": {"content": "Stream 2 - Part 2", "role": "AI", "createdAt": "2023-05-20T12:00:03Z", "id": "4"}, "chatId": "test_chat_id_2"}\n\n');
+
+      await Future.delayed(Duration(milliseconds: 10));
+
+      expect(responses1.length, 1);
+      expect(responses1[0].newMessage.content, 'Stream 1');
+      expect(responses2.length, 2);
+      expect(responses2[0].newMessage.content, 'Stream 2');
+      expect(responses2[1].newMessage.content, 'Stream 2 - Part 2');
+
+      cancelFunction2();
+
+      await streamController1.close();
+      await streamController2.close();
     });
   });
 }
