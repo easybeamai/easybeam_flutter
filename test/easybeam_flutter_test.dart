@@ -169,4 +169,59 @@ void main() {
       });
     });
   });
+
+  group("stream", () {
+    test('streamPortal handles SSE correctly', () async {
+      easybeam.injectStreamGetter((request) async => Stream.fromIterable([
+            'data: {"newMessage": {"content": "Part 1", "role": "AI", "createdAt": "2023-05-20T12:00:00Z", "id": "1"}, "chatId": "test_chat_id"}\n\n',
+            'data: {"newMessage": {"content": "Part 2", "role": "AI", "createdAt": "2023-05-20T12:00:01Z", "id": "2"}, "chatId": "test_chat_id"}\n\n',
+            'data: [DONE]\n\n',
+          ]));
+
+      final responses = <PortalResponse>[];
+      var closeCallCount = 0;
+      var errorCallCount = 0;
+
+      easybeam.streamPortal(
+        portalId: 'test_portal',
+        filledVariables: {'key': 'value'},
+        messages: [],
+        onNewResponse: (response) => responses.add(response),
+        onClose: () => closeCallCount++,
+        onError: (error) => errorCallCount++,
+      );
+
+      // Wait for stream to complete
+      await Future.delayed(Duration(milliseconds: 100));
+
+      expect(responses.length, 2);
+      expect(responses[0].newMessage.content, 'Part 1');
+      expect(responses[1].newMessage.content, 'Part 2');
+      expect(closeCallCount, 1);
+      expect(errorCallCount, 0);
+    });
+
+    test('streamPortal handles errors correctly', () async {
+      easybeam.injectStreamGetter(
+          (request) async => Stream.error(Exception('Test error')));
+
+      var errorCallCount = 0;
+      var closeCallCount = 0;
+
+      easybeam.streamPortal(
+        portalId: 'test_portal',
+        filledVariables: {'key': 'value'},
+        messages: [],
+        onNewResponse: (response) {},
+        onClose: () => closeCallCount++,
+        onError: (error) => errorCallCount++,
+      );
+
+      // Wait for stream to complete
+      await Future.delayed(Duration(milliseconds: 100));
+
+      expect(errorCallCount, 1);
+      expect(closeCallCount, 0); // onClose is not called when there's an error
+    });
+  });
 }

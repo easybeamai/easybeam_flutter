@@ -85,16 +85,32 @@ class PortalResponse {
   }
 }
 
+typedef StreamGetter = Future<Stream<String>> Function(http.Request request);
+
 class Easybeam {
   final EasyBeamConfig config;
   final String baseUrl = 'https://api.easybeam.ai/v1';
   StreamSubscription? _streamSubscription;
   http.Client _client = http.Client();
+  StreamGetter? _streamGetterOverride;
 
   Easybeam(this.config);
 
   void injectHttpClient(http.Client client) {
     _client = client;
+  }
+
+  // This method is only for testing purposes
+  void injectStreamGetter(StreamGetter streamGetter) {
+    _streamGetterOverride = streamGetter;
+  }
+
+  Future<Stream<String>> _getStream(http.Request request) async {
+    if (_streamGetterOverride != null) {
+      return _streamGetterOverride!(request);
+    }
+    // Use the imported getStream function
+    return (await getStream(request)).transform(utf8.decoder);
   }
 
   void streamEndpoint({
@@ -120,29 +136,25 @@ class Easybeam {
     request.headers['Authorization'] = 'Bearer ${config.token}';
     request.body = body;
 
-    getStream(request).asStream().listen(
-      (response) {
-        response.transform(utf8.decoder).listen(
-          (String chunk) {
-            // Handle partial messages
-            _processChunk(chunk, onNewResponse, onClose, onError);
-          },
-          onError: (error) {
-            onError('Error in stream: $error');
-            cancelCurrentStream();
-          },
-          onDone: () {
-            onClose();
-            cancelCurrentStream();
-          },
-          cancelOnError: true,
-        );
-      },
-      onError: (error) {
-        onError('Error starting stream: $error');
-        cancelCurrentStream();
-      },
-    );
+    _streamSubscription?.cancel();
+    try {
+      final stream = await _getStream(request);
+      _streamSubscription = stream.listen(
+        (String chunk) {
+          _processChunk(chunk, onNewResponse, onClose, onError);
+        },
+        onError: (error) {
+          onError('Error in stream: $error');
+          cancelCurrentStream();
+        },
+        onDone: () {
+          onClose();
+          cancelCurrentStream();
+        },
+      );
+    } catch (error) {
+      onError('Error starting stream: $error');
+    }
   }
 
 // Buffer to store incomplete messages
