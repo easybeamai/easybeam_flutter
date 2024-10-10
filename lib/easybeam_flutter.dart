@@ -86,34 +86,41 @@ class PortalResponse {
 }
 
 typedef StreamGetter = Future<Stream<String>> Function(http.Request request);
+typedef CancelFunction = void Function();
 
 class Easybeam {
   final EasyBeamConfig config;
   final String baseUrl = 'https://api.easybeam.ai/v1';
-  StreamSubscription? _streamSubscription;
+  final Map<String, StreamSubscription> _streamSubscriptions = {};
+  final Map<String, http.Client> _clients = {};
   http.Client _client = http.Client();
+
   StreamGetter? _streamGetterOverride;
 
   Easybeam(this.config);
+
+  void injectStreamGetter(StreamGetter streamGetter) {
+    _streamGetterOverride = streamGetter;
+  }
 
   void injectHttpClient(http.Client client) {
     _client = client;
   }
 
-  // This method is only for testing purposes
-  void injectStreamGetter(StreamGetter streamGetter) {
-    _streamGetterOverride = streamGetter;
+  void dispose() {
+    for (var streamId in _streamSubscriptions.keys) {
+      _cleanupStream(streamId);
+    }
   }
 
   Future<Stream<String>> _getStream(http.Request request) async {
     if (_streamGetterOverride != null) {
       return _streamGetterOverride!(request);
     }
-    // Use the imported getStream function
     return (await getStream(request)).transform(utf8.decoder);
   }
 
-  void streamEndpoint({
+  CancelFunction streamEndpoint({
     required String endpoint,
     required String id,
     String? userId,
@@ -122,7 +129,9 @@ class Easybeam {
     required Function(PortalResponse) onNewResponse,
     required Function() onClose,
     required Function(dynamic) onError,
-  }) async {
+  }) {
+    final streamId =
+        '${endpoint}_${id}_${DateTime.now().millisecondsSinceEpoch}';
     final url = Uri.parse('$baseUrl/$endpoint/$id');
     final body = jsonEncode({
       'variables': filledVariables,
@@ -136,25 +145,35 @@ class Easybeam {
     request.headers['Authorization'] = 'Bearer ${config.token}';
     request.body = body;
 
-    _streamSubscription?.cancel();
-    try {
-      final stream = await _getStream(request);
-      _streamSubscription = stream.listen(
+    _clients[streamId] = http.Client();
+
+    _getStream(request).then((stream) {
+      _streamSubscriptions[streamId] = stream.listen(
         (String chunk) {
           _processChunk(chunk, onNewResponse, onClose, onError);
         },
         onError: (error) {
           onError('Error in stream: $error');
-          cancelCurrentStream();
+          _cleanupStream(streamId);
         },
         onDone: () {
           onClose();
-          cancelCurrentStream();
+          _cleanupStream(streamId);
         },
       );
-    } catch (error) {
+    }).catchError((error) {
       onError('Error starting stream: $error');
-    }
+      _cleanupStream(streamId);
+    });
+
+    return () => _cleanupStream(streamId);
+  }
+
+  void _cleanupStream(String streamId) {
+    _streamSubscriptions[streamId]?.cancel();
+    _streamSubscriptions.remove(streamId);
+    _clients[streamId]?.close();
+    _clients.remove(streamId);
   }
 
 // Buffer to store incomplete messages
@@ -179,9 +198,7 @@ class Easybeam {
       if (rawMessage.startsWith('data: ')) {
         final data = rawMessage.substring(6);
         if (data.trim() == '[DONE]') {
-          // Stream finished
-          cancelCurrentStream();
-          onClose();
+          // close called at top level
         } else {
           try {
             final jsonResponse = jsonDecode(data);
@@ -193,11 +210,6 @@ class Easybeam {
         }
       }
     }
-  }
-
-  void cancelCurrentStream() {
-    _streamSubscription?.cancel();
-    _streamSubscription = null;
   }
 
   Future<PortalResponse> getEndpoint({
@@ -231,7 +243,7 @@ class Easybeam {
     return PortalResponse.fromJson(jsonDecode(response.body));
   }
 
-  void streamPortal({
+  CancelFunction streamPortal({
     required String portalId,
     String? userId,
     required Map<String, String> filledVariables,
@@ -240,7 +252,7 @@ class Easybeam {
     required Function() onClose,
     required Function(dynamic) onError,
   }) {
-    streamEndpoint(
+    return streamEndpoint(
       endpoint: 'portal',
       id: portalId,
       userId: userId,
@@ -267,7 +279,7 @@ class Easybeam {
     );
   }
 
-  Future<void> streamWorkflow({
+  CancelFunction streamWorkflow({
     required String workflowId,
     String? userId,
     required Map<String, String> filledVariables,
@@ -275,8 +287,8 @@ class Easybeam {
     required Function(PortalResponse) onNewResponse,
     required Function() onClose,
     required Function(dynamic) onError,
-  }) async {
-    streamEndpoint(
+  }) {
+    return streamEndpoint(
       endpoint: 'workflow',
       id: workflowId,
       userId: userId,
