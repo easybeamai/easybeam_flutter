@@ -1,6 +1,6 @@
 name: easybeam_flutter
 description: A Flutter SDK for Easybeam AI platform
-version: 1.0.0
+version: 1.0.1
 homepage: https://github.com/easybeamai/easybeam_flutter
 
 environment:
@@ -12,7 +12,7 @@ dependencies:
   flutter:
     sdk: flutter
   http: ^1.2.2
-  intl: ^0.17.0
+  intl: ^0.19.0
 
 dev_dependencies:
   flutter_test:
