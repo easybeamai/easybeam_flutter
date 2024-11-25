@@ -1,7 +1,7 @@
 name: easybeam_flutter_example
 description: Demonstrates how to use the easybeam_flutter plugin.
 
-publish_to: "none" # Remove this line if you wish to publish to pub.dev
+publish_to: "none" # Is example don't remove
 
 version: 1.0.0+1
 
@@ -11,10 +11,10 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  easybeam_flutter:
-    path: ../
+  easybeam_flutter: ^1.0.0
   cupertino_icons: ^1.0.2
-  flutter_dotenv: ^5.0.2 # Add this line
+  flutter_dotenv: ^5.0.2
+  uuid: ^4.5.1
 
 dev_dependencies:
   flutter_test:
@@ -24,4 +24,4 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-    - .env # Add this line
+    - .env

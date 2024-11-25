@@ -218,7 +218,7 @@ void main() {
       );
 
       // Wait for stream to complete
-      await Future.delayed(Duration(milliseconds: 100));
+      await Future.delayed(const Duration(milliseconds: 100));
 
       expect(errorCallCount, 1);
       expect(closeCallCount, 0); // onClose is not called when there's an error
@@ -283,7 +283,7 @@ void main() {
       streamController2.add(
           'data: {"newMessage": {"content": "Stream 2", "role": "AI", "createdAt": "2023-05-20T12:00:01Z", "id": "2"}, "chatId": "test_chat_id_2"}\n\n');
 
-      await Future.delayed(Duration(milliseconds: 10));
+      await Future.delayed(const Duration(milliseconds: 10));
 
       cancelFunction1();
 
@@ -292,7 +292,7 @@ void main() {
       streamController2.add(
           'data: {"newMessage": {"content": "Stream 2 - Part 2", "role": "AI", "createdAt": "2023-05-20T12:00:03Z", "id": "4"}, "chatId": "test_chat_id_2"}\n\n');
 
-      await Future.delayed(Duration(milliseconds: 10));
+      await Future.delayed(const Duration(milliseconds: 10));
 
       expect(responses1.length, 1);
       expect(responses1[0].newMessage.content, 'Stream 1');
