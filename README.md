@@ -2,16 +2,17 @@
 
 [![Build and Test](https://github.com/easybeamai/easybeam_flutter/actions/workflows/ci.yml/badge.svg)](https://github.com/easybeamai/easybeam_flutter/actions)
 
-Easybeam Flutter SDK is a powerful and flexible library for integrating Easybeam AI functionality into your Flutter applications. This SDK provides seamless access to Easybeam's AI-powered chat capabilities, supporting both streaming and non-streaming interactions with prompts and agents.
+Easybeam Flutter SDK is a powerful and flexible library for integrating Easybeam AI functionality into your Flutter applications. This SDK provides seamless access to Easybeam's AI-powered chat capabilities, supporting both streaming and non-streaming interactions with prompts and agents, along with secure credential handling for agent integrations.
 
 ## Features
 
-- **Prompt and Agent Integration**: Easily interact with Easybeam prompts and agents.
-- **Streaming Support**: Real-time streaming of AI responses for interactive experiences.
-- **Non-Streaming Requests**: Traditional request-response pattern for simpler interactions.
-- **Flexible Configuration**: Customize the SDK behavior to fit your application needs.
-- **Error Handling**: Robust error handling for reliable integration.
-- **Review Submission**: Built-in functionality to submit user reviews.
+- **Advanced Agent Integration**: Securely interact with Easybeam agents using protected credentials
+- **Prompt Management**: Efficiently work with Easybeam prompts for simpler AI interactions
+- **Streaming Support**: Real-time streaming of AI responses for interactive experiences
+- **Non-Streaming Requests**: Traditional request-response pattern for simpler interactions
+- **Flexible Configuration**: Customize the SDK behavior to fit your application needs
+- **Error Handling**: Robust error handling for reliable integration
+- **Review Submission**: Built-in functionality to submit user reviews
 
 ## Installation
 
@@ -19,7 +20,7 @@ Add this to your package's `pubspec.yaml` file:
 
 ```yaml
 dependencies:
-  easybeam_flutter: ^2.0.0
+  easybeam_flutter: ^2.1.0
 ```
 
 Then run:
@@ -40,9 +41,70 @@ import 'package:easybeam_flutter/easybeam_flutter.dart';
 final easybeam = Easybeam(EasyBeamConfig(token: 'your_api_token_here'));
 ```
 
-### Streaming Interaction
+### Working with Agents
 
-To start a streaming interaction with a prompt:
+Agents provide advanced AI capabilities and can integrate with external services. Here's how to use them:
+
+#### Streaming Agent Interaction
+
+```dart
+final userSecrets = {'apiKey': 'your-sensitive-api-key'};
+
+final cancelFunction = easybeam.streamAgent(
+  agentId: 'your_agent_id',
+  userId: 'user123',
+  filledVariables: {'language': 'english'},
+  userSecrets: userSecrets,  // Optional secure credentials
+  messages: [
+    ChatMessage(
+      content: 'Analyze the market data for Q2',
+      role: ChatRole.USER,
+      createdAt: ChatMessage.getCurrentTimestamp(),
+      id: '1',
+    ),
+  ],
+  onNewResponse: (response) {
+    print('Agent response: ${response.newMessage.content}');
+  },
+  onClose: () {
+    print('Stream closed');
+  },
+  onError: (error) {
+    print('Error: $error');
+  },
+);
+
+// To cancel the stream later:
+cancelFunction();
+```
+
+#### Non-Streaming Agent Interaction
+
+```dart
+try {
+  final response = await easybeam.getAgent(
+    agentId: 'your_agent_id',
+    userId: 'user123',
+    filledVariables: {'language': 'english'},
+    userSecrets: {'apiKey': 'your-sensitive-api-key'},  // Optional secure credentials
+    messages: [
+      ChatMessage(
+        content: 'Generate a sales report',
+        role: ChatRole.USER,
+        createdAt: ChatMessage.getCurrentTimestamp(),
+        id: '1',
+      ),
+    ],
+  );
+  print('Agent response: ${response.newMessage.content}');
+} catch (e) {
+  print('Error: $e');
+}
+```
+
+### Working with Prompts
+
+For simpler AI interactions, you can use prompts:
 
 ```dart
 final cancelFunction = easybeam.streamPrompt(
@@ -66,38 +128,11 @@ final cancelFunction = easybeam.streamPrompt(
     print('Error: $error');
   },
 );
-
-// To cancel the stream later:
-cancelFunction();
 ```
 
-### Non-Streaming Interaction
+### Submitting Reviews
 
-For a simple request-response interaction:
-
-```dart
-try {
-  final response = await easybeam.getPrompt(
-    promptId: 'your_prompt_id',
-    filledVariables: {'key': 'value'},
-    messages: [
-      ChatMessage(
-        content: 'Hello, AI!',
-        role: ChatRole.USER,
-        createdAt: ChatMessage.getCurrentTimestamp(),
-        id: '1',
-      ),
-    ],
-  );
-  print('AI response: ${response.newMessage.content}');
-} catch (e) {
-  print('Error: $e');
-}
-```
-
-### Submitting a Review
-
-To submit a review for a chat interaction:
+To submit a review for any chat interaction:
 
 ```dart
 await easybeam.review(
@@ -108,7 +143,7 @@ await easybeam.review(
 );
 ```
 
-## Advanced Usage
+## Advanced Configuration
 
 ### Custom HTTP Client
 
@@ -121,23 +156,31 @@ final customClient = http.Client();
 easybeam.injectHttpClient(customClient);
 ```
 
-### Cleanup
+### Resource Management
 
-When you're done with the Easybeam instance, make sure to dispose of it to clean up resources:
+When you're done with the Easybeam instance, dispose of it to clean up resources:
 
 ```dart
 easybeam.dispose();
 ```
 
+## Security Considerations
+
+- Store sensitive credentials securely and only pass them through the `userSecrets` parameter when required
+- Implement proper token management for the Easybeam API token
+- Review and handle sensitive data appropriately in your application
+- Consider implementing additional encryption for sensitive credentials in transit
+
 ## Error Handling
 
-The SDK provides detailed error messages. Always wrap API calls in try-catch blocks for proper error handling.
+The SDK provides comprehensive error handling. Always implement try-catch blocks around API calls and provide appropriate error handling in stream callbacks.
 
 ## Notes
 
-- Ensure you have a valid Easybeam API token before using the SDK.
-- The SDK uses Server-Sent Events (SSE) for streaming, which may have implications for backend compatibility and network configurations.
-- For production applications, consider implementing proper token management and security practices.
+- Ensure you have a valid Easybeam API token before using the SDK
+- The SDK uses Server-Sent Events (SSE) for streaming functionality
+- Consider network conditions and implement appropriate timeout handling
+- Implement proper security measures when handling sensitive credentials
 
 ## Contributing
 

@@ -129,6 +129,7 @@ class Easybeam {
     required Function(ChatResponse) onNewResponse,
     required Function() onClose,
     required Function(dynamic) onError,
+    Map<String, String>? userSecrets,
   }) {
     final streamId =
         '${endpoint}_${id}_${DateTime.now().millisecondsSinceEpoch}';
@@ -138,6 +139,7 @@ class Easybeam {
       'messages': messages.map((m) => m.toJson()).toList(),
       'stream': 'true',
       'userId': userId,
+      if (userSecrets != null) 'userSecrets': userSecrets,
     });
 
     final request = http.Request('POST', url);
@@ -217,6 +219,7 @@ class Easybeam {
     String? userId,
     required Map<String, String> filledVariables,
     required List<ChatMessage> messages,
+    Map<String, String>? userSecrets,
   }) async {
     final url = Uri.parse('$baseUrl/$endpoint/$id');
     final body = jsonEncode({
@@ -224,6 +227,7 @@ class Easybeam {
       'messages': messages.map((m) => m.toJson()).toList(),
       'stream': 'false',
       'userId': userId,
+      if (userSecrets != null) 'userSecrets': userSecrets,
     });
 
     final response = await _client.post(
@@ -286,6 +290,7 @@ class Easybeam {
     required Function(ChatResponse) onNewResponse,
     required Function() onClose,
     required Function(dynamic) onError,
+    Map<String, String>? userSecrets,
   }) {
     return streamEndpoint(
       endpoint: 'agent',
@@ -296,6 +301,7 @@ class Easybeam {
       onNewResponse: onNewResponse,
       onClose: onClose,
       onError: onError,
+      userSecrets: userSecrets,
     );
   }
 
@@ -304,6 +310,7 @@ class Easybeam {
     String? userId,
     required Map<String, String> filledVariables,
     required List<ChatMessage> messages,
+    Map<String, String>? userSecrets,
   }) async {
     return await getEndpoint(
       endpoint: 'agent',
@@ -311,6 +318,7 @@ class Easybeam {
       userId: userId,
       filledVariables: filledVariables,
       messages: messages,
+      userSecrets: userSecrets,
     );
   }
 
