@@ -23,8 +23,8 @@ void main() {
       expect(easybeam.baseUrl, equals('https://api.easybeam.ai/v1'));
     });
 
-    group('getPortal', () {
-      test('returns PortalResponse on success', () async {
+    group('getPrompt', () {
+      test('returns ChatResponse on success', () async {
         when(mockClient.post(
           any,
           headers: anyNamed('headers'),
@@ -33,13 +33,13 @@ void main() {
             '{"newMessage": {"content": "Test", "role": "AI", "createdAt": "2023-01-01T00:00:00.000Z", "id": "123"}, "chatId": "456"}',
             200));
 
-        final result = await easybeam.getPortal(
-          portalId: 'test_portal',
+        final result = await easybeam.getPrompt(
+          promptId: 'test_prompt',
           filledVariables: {},
           messages: [],
         );
 
-        expect(result, isA<PortalResponse>());
+        expect(result, isA<ChatResponse>());
         expect(result.newMessage.content, equals('Test'));
         expect(result.chatId, equals('456'));
       });
@@ -52,8 +52,8 @@ void main() {
         )).thenAnswer((_) async => http.Response('Error', 400));
 
         expect(
-          () => easybeam.getPortal(
-            portalId: 'test_portal',
+          () => easybeam.getPrompt(
+            promptId: 'test_prompt',
             filledVariables: {},
             messages: [],
           ),
@@ -62,24 +62,24 @@ void main() {
       });
     });
 
-    group('getWorkflow', () {
-      test('returns PortalResponse on success', () async {
+    group('getAgent', () {
+      test('returns ChatResponse on success', () async {
         when(mockClient.post(
           any,
           headers: anyNamed('headers'),
           body: anyNamed('body'),
         )).thenAnswer((_) async => http.Response(
-            '{"newMessage": {"content": "Workflow Test", "role": "AI", "createdAt": "2023-01-01T00:00:00.000Z", "id": "789"}, "chatId": "101112"}',
+            '{"newMessage": {"content": "Agent Test", "role": "AI", "createdAt": "2023-01-01T00:00:00.000Z", "id": "789"}, "chatId": "101112"}',
             200));
 
-        final result = await easybeam.getWorkflow(
-          workflowId: 'test_workflow',
+        final result = await easybeam.getAgent(
+          agentId: 'test_agent',
           filledVariables: {},
           messages: [],
         );
 
-        expect(result, isA<PortalResponse>());
-        expect(result.newMessage.content, equals('Workflow Test'));
+        expect(result, isA<ChatResponse>());
+        expect(result.newMessage.content, equals('Agent Test'));
         expect(result.chatId, equals('101112'));
       });
 
@@ -91,8 +91,8 @@ void main() {
         )).thenAnswer((_) async => http.Response('Error', 500));
 
         expect(
-          () => easybeam.getWorkflow(
-            workflowId: 'test_workflow',
+          () => easybeam.getAgent(
+            agentId: 'test_agent',
             filledVariables: {},
             messages: [],
           ),
@@ -171,19 +171,19 @@ void main() {
   });
 
   group("stream", () {
-    test('streamPortal handles SSE correctly', () async {
+    test('streamPrompt handles SSE correctly', () async {
       easybeam.injectStreamGetter((request) async => Stream.fromIterable([
             'data: {"newMessage": {"content": "Part 1", "role": "AI", "createdAt": "2023-05-20T12:00:00Z", "id": "1"}, "chatId": "test_chat_id"}\n\n',
             'data: {"newMessage": {"content": "Part 2", "role": "AI", "createdAt": "2023-05-20T12:00:01Z", "id": "2"}, "chatId": "test_chat_id"}\n\n',
             'data: [DONE]\n\n',
           ]));
 
-      final responses = <PortalResponse>[];
+      final responses = <ChatResponse>[];
       var closeCallCount = 0;
       var errorCallCount = 0;
 
-      easybeam.streamPortal(
-        portalId: 'test_portal',
+      easybeam.streamPrompt(
+        promptId: 'test_prompt',
         filledVariables: {'key': 'value'},
         messages: [],
         onNewResponse: (response) => responses.add(response),
@@ -201,15 +201,15 @@ void main() {
       expect(errorCallCount, 0);
     });
 
-    test('streamPortal handles errors correctly', () async {
+    test('streamPrompt handles errors correctly', () async {
       easybeam.injectStreamGetter(
           (request) async => Stream.error(Exception('Test error')));
 
       var errorCallCount = 0;
       var closeCallCount = 0;
 
-      easybeam.streamPortal(
-        portalId: 'test_portal',
+      easybeam.streamPrompt(
+        promptId: 'test_prompt',
         filledVariables: {'key': 'value'},
         messages: [],
         onNewResponse: (response) {},
@@ -226,15 +226,15 @@ void main() {
   });
 
   group("stream", () {
-    test('streamPortal returns a cancel function', () async {
+    test('streamPrompt returns a cancel function', () async {
       easybeam.injectStreamGetter((request) async => Stream.fromIterable([
             'data: {"newMessage": {"content": "Part 1", "role": "AI", "createdAt": "2023-05-20T12:00:00Z", "id": "1"}, "chatId": "test_chat_id"}\n\n',
             'data: {"newMessage": {"content": "Part 2", "role": "AI", "createdAt": "2023-05-20T12:00:01Z", "id": "2"}, "chatId": "test_chat_id"}\n\n',
             'data: [DONE]\n\n',
           ]));
 
-      final cancelFunction = easybeam.streamPortal(
-        portalId: 'test_portal',
+      final cancelFunction = easybeam.streamPrompt(
+        promptId: 'test_prompt',
         filledVariables: {'key': 'value'},
         messages: [],
         onNewResponse: (response) {},
@@ -257,11 +257,11 @@ void main() {
             : streamController2.stream;
       });
 
-      final responses1 = <PortalResponse>[];
-      final responses2 = <PortalResponse>[];
+      final responses1 = <ChatResponse>[];
+      final responses2 = <ChatResponse>[];
 
-      final cancelFunction1 = easybeam.streamPortal(
-        portalId: 'test_portal_1',
+      final cancelFunction1 = easybeam.streamPrompt(
+        promptId: 'test_prompt_1',
         filledVariables: {'key': 'value1'},
         messages: [],
         onNewResponse: (response) => responses1.add(response),
@@ -269,8 +269,8 @@ void main() {
         onError: (error) {},
       );
 
-      final cancelFunction2 = easybeam.streamPortal(
-        portalId: 'test_portal_2',
+      final cancelFunction2 = easybeam.streamPrompt(
+        promptId: 'test_prompt_2',
         filledVariables: {'key': 'value2'},
         messages: [],
         onNewResponse: (response) => responses2.add(response),

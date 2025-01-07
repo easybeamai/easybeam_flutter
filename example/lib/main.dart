@@ -87,7 +87,7 @@ class _ChatPageState extends State<ChatPage> {
     super.initState();
     final apiToken = dotenv.env['EASYBEAM_API_TOKEN']!;
     easybeam = Easybeam(EasyBeamConfig(token: apiToken));
-    _triggerWorkflow();
+    _triggerAgent();
   }
 
   void _sendMessage() async {
@@ -107,13 +107,13 @@ class _ChatPageState extends State<ChatPage> {
 
     _messageController.clear();
 
-    _triggerWorkflow();
+    _triggerAgent();
   }
 
-  void _triggerWorkflow() async {
+  void _triggerAgent() async {
     try {
-      easybeam.streamPortal(
-        portalId: 'B1lQC0',
+      easybeam.streamPrompt(
+        promptId: 'B1lQC0',
         userId: 'example-user-id',
         filledVariables: {
           "exampleClient": exampleClient,
@@ -122,7 +122,7 @@ class _ChatPageState extends State<ChatPage> {
           "exampleSalesRep": exampleSalesRep
         },
         messages: _messages,
-        onNewResponse: (PortalResponse response) {
+        onNewResponse: (ChatResponse response) {
           setState(() {
             _chatID = response.chatId;
             if (_messages.isNotEmpty && _messages.last.role == ChatRole.AI) {

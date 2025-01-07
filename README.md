@@ -2,11 +2,11 @@
 
 [![Build and Test](https://github.com/easybeamai/easybeam_flutter/actions/workflows/ci.yml/badge.svg)](https://github.com/easybeamai/easybeam_flutter/actions)
 
-Easybeam Flutter SDK is a powerful and flexible library for integrating Easybeam AI functionality into your Flutter applications. This SDK provides seamless access to Easybeam's AI-powered chat and workflow capabilities, supporting both streaming and non-streaming interactions.
+Easybeam Flutter SDK is a powerful and flexible library for integrating Easybeam AI functionality into your Flutter applications. This SDK provides seamless access to Easybeam's AI-powered chat capabilities, supporting both streaming and non-streaming interactions with prompts and agents.
 
 ## Features
 
-- **Portal and Workflow Integration**: Easily interact with Easybeam portals and workflows.
+- **Prompt and Agent Integration**: Easily interact with Easybeam prompts and agents.
 - **Streaming Support**: Real-time streaming of AI responses for interactive experiences.
 - **Non-Streaming Requests**: Traditional request-response pattern for simpler interactions.
 - **Flexible Configuration**: Customize the SDK behavior to fit your application needs.
@@ -19,7 +19,7 @@ Add this to your package's `pubspec.yaml` file:
 
 ```yaml
 dependencies:
-  easybeam_flutter: ^1.0.0
+  easybeam_flutter: ^2.0.0
 ```
 
 Then run:
@@ -42,11 +42,11 @@ final easybeam = Easybeam(EasyBeamConfig(token: 'your_api_token_here'));
 
 ### Streaming Interaction
 
-To start a streaming interaction with a portal:
+To start a streaming interaction with a prompt:
 
 ```dart
-final cancelFunction = easybeam.streamPortal(
-  portalId: 'your_portal_id',
+final cancelFunction = easybeam.streamPrompt(
+  promptId: 'your_prompt_id',
   filledVariables: {'key': 'value'},
   messages: [
     ChatMessage(
@@ -77,8 +77,8 @@ For a simple request-response interaction:
 
 ```dart
 try {
-  final response = await easybeam.getPortal(
-    portalId: 'your_portal_id',
+  final response = await easybeam.getPrompt(
+    promptId: 'your_prompt_id',
     filledVariables: {'key': 'value'},
     messages: [
       ChatMessage(

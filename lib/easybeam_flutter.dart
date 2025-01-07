@@ -65,19 +65,19 @@ class ChatMessage {
   }
 }
 
-class PortalResponse {
+class ChatResponse {
   final ChatMessage newMessage;
   final String chatId;
   final bool? streamFinished;
 
-  PortalResponse({
+  ChatResponse({
     required this.newMessage,
     required this.chatId,
     this.streamFinished,
   });
 
-  factory PortalResponse.fromJson(Map<String, dynamic> json) {
-    return PortalResponse(
+  factory ChatResponse.fromJson(Map<String, dynamic> json) {
+    return ChatResponse(
       newMessage: ChatMessage.fromJson(json['newMessage']),
       chatId: json['chatId'],
       streamFinished: json['streamFinished'],
@@ -126,7 +126,7 @@ class Easybeam {
     String? userId,
     required Map<String, String> filledVariables,
     required List<ChatMessage> messages,
-    required Function(PortalResponse) onNewResponse,
+    required Function(ChatResponse) onNewResponse,
     required Function() onClose,
     required Function(dynamic) onError,
   }) {
@@ -176,12 +176,11 @@ class Easybeam {
     _clients.remove(streamId);
   }
 
-// Buffer to store incomplete messages
   String _buffer = '';
 
   void _processChunk(
     String chunk,
-    Function(PortalResponse) onNewResponse,
+    Function(ChatResponse) onNewResponse,
     Function() onClose,
     Function(dynamic) onError,
   ) {
@@ -202,8 +201,8 @@ class Easybeam {
         } else {
           try {
             final jsonResponse = jsonDecode(data);
-            final portalResponse = PortalResponse.fromJson(jsonResponse);
-            onNewResponse(portalResponse);
+            final chatResponse = ChatResponse.fromJson(jsonResponse);
+            onNewResponse(chatResponse);
           } catch (e) {
             onError('Error processing stream data: $e');
           }
@@ -212,7 +211,7 @@ class Easybeam {
     }
   }
 
-  Future<PortalResponse> getEndpoint({
+  Future<ChatResponse> getEndpoint({
     required String endpoint,
     required String id,
     String? userId,
@@ -240,21 +239,21 @@ class Easybeam {
       throw Exception('Failed to process request: ${response.body}');
     }
 
-    return PortalResponse.fromJson(jsonDecode(response.body));
+    return ChatResponse.fromJson(jsonDecode(response.body));
   }
 
-  CancelFunction streamPortal({
-    required String portalId,
+  CancelFunction streamPrompt({
+    required String promptId,
     String? userId,
     required Map<String, String> filledVariables,
     required List<ChatMessage> messages,
-    required Function(PortalResponse) onNewResponse,
+    required Function(ChatResponse) onNewResponse,
     required Function() onClose,
     required Function(dynamic) onError,
   }) {
     return streamEndpoint(
-      endpoint: 'portal',
-      id: portalId,
+      endpoint: 'prompt',
+      id: promptId,
       userId: userId,
       filledVariables: filledVariables,
       messages: messages,
@@ -264,33 +263,33 @@ class Easybeam {
     );
   }
 
-  Future<PortalResponse> getPortal({
-    required String portalId,
+  Future<ChatResponse> getPrompt({
+    required String promptId,
     String? userId,
     required Map<String, String> filledVariables,
     required List<ChatMessage> messages,
   }) async {
     return await getEndpoint(
-      endpoint: 'portal',
-      id: portalId,
+      endpoint: 'prompt',
+      id: promptId,
       userId: userId,
       filledVariables: filledVariables,
       messages: messages,
     );
   }
 
-  CancelFunction streamWorkflow({
-    required String workflowId,
+  CancelFunction streamAgent({
+    required String agentId,
     String? userId,
     required Map<String, String> filledVariables,
     required List<ChatMessage> messages,
-    required Function(PortalResponse) onNewResponse,
+    required Function(ChatResponse) onNewResponse,
     required Function() onClose,
     required Function(dynamic) onError,
   }) {
     return streamEndpoint(
-      endpoint: 'workflow',
-      id: workflowId,
+      endpoint: 'agent',
+      id: agentId,
       userId: userId,
       filledVariables: filledVariables,
       messages: messages,
@@ -300,15 +299,15 @@ class Easybeam {
     );
   }
 
-  Future<PortalResponse> getWorkflow({
-    required String workflowId,
+  Future<ChatResponse> getAgent({
+    required String agentId,
     String? userId,
     required Map<String, String> filledVariables,
     required List<ChatMessage> messages,
   }) async {
     return await getEndpoint(
-      endpoint: 'workflow',
-      id: workflowId,
+      endpoint: 'agent',
+      id: agentId,
       userId: userId,
       filledVariables: filledVariables,
       messages: messages,
