@@ -1,3 +1,11 @@
+## 2.1.0
+
+New Features:
+
+- Added support for secure credential handling in agent interactions through the new `userSecrets` parameter
+- Enhanced agent integration with secure parameter passing capabilities
+- Improved type safety for credential handling
+
 ## 2.0.0
 
 Breaking Changes:
